@@ -208,7 +208,7 @@ func EncodeProto(parts []ProtoPart) []byte {
 				break
 			}
 
-			fmt.Println(part.Value)
+			//fmt.Println(part.Value)
 
 			switch part.Value.(type) {
 			case []byte:
@@ -217,7 +217,7 @@ func EncodeProto(parts []ProtoPart) []byte {
 				buffer.Write(part.Value.([]byte))
 				break
 			case []ProtoPart:
-				fmt.Println(part.Value.([]ProtoPart))
+				//fmt.Println(part.Value.([]ProtoPart))
 				encoded := EncodeProto(part.Value.([]ProtoPart))
 				length := len(encoded)
 				buffer.Write(encodeVarint(uint64(length)))
