@@ -2,8 +2,9 @@ package protobuf
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
-	"fmt"
+	"math"
 	"math/big"
 	"unicode/utf8"
 )
@@ -49,6 +50,7 @@ type ProtoDecoded struct {
 type ProtoPart struct {
 	ByteRange []int
 	Type      int
+	Field     int
 	Value     interface{}
 }
 
@@ -153,14 +155,21 @@ func ProtoPartsToArray(parts []ProtoPart) []interface{} {
 	return res
 }
 
+const scale = 1 << 16
+
 func ArrayToProtoParts(data []interface{}) []ProtoPart {
 	var res []ProtoPart
 
-	for _, item := range data {
+	for i, item := range data {
 		var part ProtoPart
+		part.Field = i + 1
 
 		switch item.(type) {
 		case int:
+			part.Type = VARINT
+			part.Value = item
+			break
+		case *big.Int:
 			part.Type = VARINT
 			part.Value = item
 			break
@@ -180,6 +189,38 @@ func ArrayToProtoParts(data []interface{}) []ProtoPart {
 			part.Type = LENDELIM
 			part.Value = ArrayToProtoParts(item.([]interface{}))
 			break
+		case []int:
+			part.Type = LENDELIM
+			part.Value = ArrayToProtoParts(item.([]interface{}))
+			break
+		case []string:
+			part.Type = LENDELIM
+			part.Value = ArrayToProtoParts(item.([]interface{}))
+			break
+		case float32:
+			part.Type = FIXED32
+
+			buf := make([]byte, 4)
+			binary.LittleEndian.PutUint32(buf, uint32(int32(item.(float32)*scale)))
+
+			part.Value = buf
+			break
+		case float64:
+			part.Type = FIXED64
+
+			buf := make([]byte, 8)
+			binary.LittleEndian.PutUint64(buf, math.Float64bits(item.(float64)))
+
+			part.Value = buf
+			break
+		case bool:
+			part.Type = VARINT
+			if item.(bool) {
+				part.Value = 1
+			} else {
+				part.Value = 0
+			}
+			break
 		}
 
 		res = append(res, part)
@@ -192,13 +233,28 @@ func EncodeProto(parts []ProtoPart) []byte {
 	var buffer bytes.Buffer
 
 	for _, part := range parts {
-		// Write the type to the buffer
-		buffer.WriteByte(byte(part.Type))
+		// Write the type with index to the buffer
+		buffer.WriteByte(byte(part.Field<<3 | part.Type))
+
+		// buffer.WriteByte(byte(part.Type))
 
 		switch part.Type {
 		case VARINT:
-			// convert int to uint64
-			buffer.Write(encodeVarint(uint64(part.Value.(int))))
+			switch part.Value.(type) {
+			case int:
+				if part.Value == 0 {
+					buffer.WriteByte(0) // Write 0 if the value is 0, didn't work previously for some reason
+				}
+
+				buffer.Write(encodeVarint(uint64(part.Value.(int))))
+				break
+			case int64:
+				buffer.Write(encodeVarint(uint64(part.Value.(int64))))
+				break
+			case *big.Int:
+				buffer.Write(encodeVarint(part.Value.(*big.Int).Uint64()))
+				break
+			}
 			break
 		case FIXED64:
 			buffer.Write(part.Value.([]byte))
@@ -208,13 +264,16 @@ func EncodeProto(parts []ProtoPart) []byte {
 				break
 			}
 
-			//fmt.Println(part.Value)
-
 			switch part.Value.(type) {
 			case []byte:
 				length := len(part.Value.([]byte))
 				buffer.Write(encodeVarint(uint64(length)))
 				buffer.Write(part.Value.([]byte))
+				break
+			case string:
+				length := len(part.Value.(string))
+				buffer.Write(encodeVarint(uint64(length)))
+				buffer.Write([]byte(part.Value.(string)))
 				break
 			case []ProtoPart:
 				//fmt.Println(part.Value.([]ProtoPart))
@@ -255,6 +314,7 @@ func DecodeProto(data []byte) ProtoDecoded {
 		}
 
 		fieldType := int(fieldTypeRaw.Int64() & 0x07)
+		part.Field = int(fieldTypeRaw.Int64() >> 3)
 
 		if fieldType > LENDELIM && fieldType != FIXED32 {
 			break
@@ -296,4 +356,25 @@ func DecodeProto(data []byte) ProtoDecoded {
 	return response
 }
 
+//#endregion
+//#region Testing
+// func main() {
+// 	str := "082a108082a6efc79e8491111dc3f54840216957148b0abf05402801321048656c6c6f2c2050726f746f627566213a0e50726f746f627566206279746573420501020304054a110a0d4e657374656420737472696e67106350005a080a046b65793110645a090a046b65793210c801"
+// 	data, _ := hex.DecodeString(str)
+
+// 	decoded := DecodeProto(data)
+// 	ProtoPartsToArray(decoded.Parts)
+// 	// fmt.Println(array)
+
+// 	testBool := false
+
+// 	parts := ArrayToProtoParts([]interface{}{
+// 		42, 1234567890123456768, 123.456, 46.13303445314885481, 1, "Hello, Protobuf!", []byte("Protobuf bytes"), []interface{}{1, 2, 3, 4, 5}, []interface{}{
+// 			"Nested string", 99}, testBool, []interface{}{"key1", 100}, []interface{}{"key2", 200}})
+// 	// fmt.Println("Parts: %v, %v", parts, len(parts))
+
+// 	EncodeProto(parts)
+// 	// fmt.Println(hex.EncodeToString(encoded))
+
+// }
 //#endregion
