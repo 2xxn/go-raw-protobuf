@@ -6,34 +6,10 @@ import (
 	"errors"
 	"math"
 	"math/big"
+	"reflect"
+	"strconv"
 	"unicode/utf8"
 )
-
-//#region README
-/*
-github.com/nextu1337's Go snippet for encoding and decoding Protobuf messages without proto files.
-Feel free to use this code in your projects, it's atroucious but it (kinda) works.
-
-Can be downloaded as a library using `go get github.com/nextu1337/go-proto-raw` or by adding the file to your project.
-
-Supported types:
-- Varint (enc/dec as uint64)
-- Length-delimited (enc as []byte, decode as []byte, string or protobuf message)
-- Fixed32
-- Fixed64
-
-Usage:
-- Encode a message:
-
-data := []interface{}{123, "hello there!", []interface{}{123, "test"}}
-fmt.Println(hex.EncodeToString(EncodeProto(ArrayToProtoParts(data))))
-
-- Decode a message:
-
-data, _ := hex.DecodeString("007b020c68656c6c6f207468657265210208007b020474657374")
-fmt.Println(ProtoPartsToArray(DecodeProto(data).Parts))
-*/
-//#endregion
 
 const (
 	VARINT   = 0x00
@@ -116,9 +92,8 @@ func decodeVarint(buffer *bytes.Buffer) (*big.Int, int, error) {
 	return res, bytesRead, nil
 }
 
-//#endregion
-//#region Proto
-
+// #endregion
+// #region Proto
 func stringOrBytes(data []byte) interface{} {
 	if len(data) == 0 {
 		return string(data)
@@ -129,6 +104,82 @@ func stringOrBytes(data []byte) interface{} {
 	}
 
 	return data
+}
+
+// Target should be a pointer to a struct
+func DecodeToProtoStruct(data []byte, target interface{}) error {
+	// TODO: too tired for this right now
+	return nil
+}
+
+// TODO: refactor this
+func EncodeProtoStruct(data interface{}) []ProtoPart {
+	var response []ProtoPart
+	dType := reflect.TypeOf(data)
+	dValue := reflect.ValueOf(data)
+
+	if dType.Kind() == reflect.Ptr {
+		dType = dType.Elem()
+		dValue = dValue.Elem()
+	}
+
+	// Iterate through fields
+	for i := 0; i < dType.NumField(); i++ {
+		field := dType.Field(i)
+		tag := field.Tag.Get("protoField")
+		value := dValue.Field(i).Interface()
+
+		if len(tag) == 0 {
+			continue
+		} // Ignore fields without a tag
+
+		fieldNum, err := strconv.Atoi(tag)
+		if err != nil {
+			continue
+		} // Ignore fields with invalid tags
+
+		var part ProtoPart
+		part.Field = fieldNum
+
+		switch value.(type) {
+		case int:
+			part.Type = VARINT
+			part.Value = value
+			break
+		case string:
+			part.Type = LENDELIM
+			part.Value = []byte(value.(string))
+			break
+		case bool:
+			part.Type = VARINT
+			if value.(bool) {
+				part.Value = 1
+			} else {
+				part.Value = 0
+			}
+			break
+		case []byte:
+			part.Type = LENDELIM
+			part.Value = value
+			break
+		case []interface{}:
+			part.Type = LENDELIM
+			part.Value = ArrayToProtoParts(value.([]interface{}))
+			break
+		case float32:
+			part.Type = FIXED32
+			part.Value = value
+			break
+		case float64:
+			part.Type = FIXED64
+			part.Value = value
+			break
+		}
+
+		response = append(response, part)
+	}
+
+	return response
 }
 
 func ProtoPartsToArray(parts []ProtoPart) []interface{} {
