@@ -1,7 +1,3 @@
-Here’s an improved version of your README with better structure, clarity, and professionalism while maintaining a friendly tone:
-
----
-
 # go-raw-protobuf
 A lightweight Go library for encoding and decoding Protocol Buffers (protobuf) without requiring `.proto` files.  
 
@@ -19,7 +15,8 @@ Add the library to your project using `go get`:
 go get github.com/nextu1337/go-raw-protobuf
 ```  
 
-Or simply copy the file into your project.  
+<!-- Or simply copy the file into your project.   -->
+<!-- WILL BE UNSUPPORTED AS OF v2.0.0 -->
 
 ---
 
@@ -44,7 +41,7 @@ Encoding:
 ---
 
 ## Usage  
-
+TODO: make it less confusing to use, change naming etc
 ### Encoding a Message  
 Convert a slice of data into a protobuf-encoded byte slice:  
 ```go
