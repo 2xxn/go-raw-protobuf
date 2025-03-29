@@ -1,3 +1,3 @@
-module github.com/nextu1337/go-raw-protobuf
+module github.com/2xxn/go-raw-protobuf
 
 go 1.23.0
