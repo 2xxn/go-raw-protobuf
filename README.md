@@ -1,7 +1,7 @@
 # go-raw-protobuf
 A lightweight Go library for encoding and decoding Protocol Buffers (protobuf) without requiring `.proto` files.  
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/nextu1337/go-raw-protobuf.svg)](https://pkg.go.dev/github.com/nextu1337/go-raw-protobuf)  
+[![Go Reference](https://pkg.go.dev/badge/github.com/2xxn/go-raw-protobuf.svg)](https://pkg.go.dev/github.com/2xxn/go-raw-protobuf)  
 
 This library provides a simple way to work with protobuf messages dynamically, eliminating the need for precompiled `.proto` definitions. It supports basic protobuf wire types and is designed for flexibility and ease of use.  
 
@@ -12,7 +12,7 @@ This library provides a simple way to work with protobuf messages dynamically, e
 ## Installation  
 Add the library to your project using `go get`:  
 ```bash
-go get github.com/nextu1337/go-raw-protobuf
+go get github.com/2xxn/go-raw-protobuf
 ```  
 
 <!-- Or simply copy the file into your project.   -->
