@@ -101,6 +101,28 @@ decoded := DecodeStruct(decoded.Parts, &s) // DecodeToProtoStruct will panic if 
 fmt.Printf("%+v\n", s)
 ```
 
+<details>
+<summary>Old-fashioned way</summary>
+<br>
+
+### Encoding a Message  
+Convert a slice of data into a protobuf-encoded byte slice:  
+```go
+data := []interface{}{123.456, "hello there!", []interface{}{true, "test"}}
+encoded := EncodeProto(ArrayToProtoParts(data))
+fmt.Println(hex.EncodeToString(encoded)) // Output: Protobuf-encoded hex string
+```  
+
+### Decoding a Message  
+Decode a protobuf-encoded byte slice back into a slice of data:  
+```go
+data, _ := hex.DecodeString("08aefb8999d532120e496e697469616c20636f6d6d6974")
+decoded := ProtoPartsToArray(DecodeProto(data).Parts)
+// Loop through DecodeProto(data).Parts yourself if dealing with floating-point numbers etc or else fixed32/fixed64 will be returned as []byte and no different from utf8 invalid length-delimited data
+fmt.Println(decoded) // Output: Decoded data as a slice
+```  
+</details>
+
 ---
 
 ## Contributing  
