@@ -7,25 +7,40 @@ import (
 
 // Please don't pass structs with unexported fields, it will panic
 type ProtoStruct struct {
-	Id       int    `protoField:"1"`
-	Username string `protoField:"2"`
-	Email    string `protoField:"3"`
-	IsAdmin  bool   `protoField:"5"`
+	Id             int     `protoField:"1"`
+	Username       string  `protoField:"2"`
+	Email          string  `protoField:"3"`
+	TestFloat      float32 `protoField:"4"`
+	IsAdmin        bool    `protoField:"5"`
+	TestOtherFloat float64 `protoField:"6"`
 }
 
 func TestEncodeProtoStruct(t *testing.T) {
 	// Test encoding
 	data := &ProtoStruct{
-		Id:       4588743,
-		Username: "hello",
-		Email:    "admin@example.com",
-		IsAdmin:  true,
+		Id:             4588743,
+		Username:       "hello",
+		Email:          "admin@example.com",
+		TestFloat:      1.2,
+		TestOtherFloat: 1.23456789,
+		IsAdmin:        true,
 	}
 
 	parts := EncodeProtoStruct(data)
 	encoded := EncodeProto(parts)
 
 	t.Logf("Encoded: %v", hex.EncodeToString(encoded))
+}
+
+func TestDecodeProtoStruct(t *testing.T) {
+	// Test decoding
+	str := "08c7899802120568656c6c6f1a1161646d696e406578616d706c652e636f6d259a99993f2801311bde8342cac0f33f"
+	data, _ := hex.DecodeString(str)
+
+	var s ProtoStruct
+	decoded := DecodeProto(data)
+	DecodeToProtoStruct(decoded.Parts, &s) // DecodeToProtoStruct will panic if the struct is not valid
+	t.Logf("Decoded: %v", s)
 }
 
 func TestEncoding(t *testing.T) {
