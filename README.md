@@ -41,23 +41,65 @@ Encoding:
 ---
 
 ## Usage  
-TODO: make it less confusing to use, change naming etc
-### Encoding a Message  
+If you want to verify the encoded data manually, feel free to visit [protobuf-decoder.netlify.app](https://protobuf-decoder.netlify.app/)
+### Encoding a Message without a struct
 Convert a slice of data into a protobuf-encoded byte slice:  
 ```go
 data := []interface{}{123.456, "hello there!", []interface{}{true, "test"}}
-encoded := EncodeProto(ArrayToProtoParts(data))
+encoded := Encode(data)
 fmt.Println(hex.EncodeToString(encoded)) // Output: Protobuf-encoded hex string
 ```  
 
-### Decoding a Message  
+### Decoding a Message without a struct
 Decode a protobuf-encoded byte slice back into a slice of data:  
 ```go
 data, _ := hex.DecodeString("08aefb8999d532120e496e697469616c20636f6d6d6974")
-decoded := ProtoPartsToArray(DecodeProto(data).Parts)
-// Loop through DecodeProto(data).Parts yourself if dealing with floating-point numbers etc or else fixed32/fixed64 will be returned as []byte and no different from utf8 invalid length-delimited data
+decoded := Decode(data)
 fmt.Println(decoded) // Output: Decoded data as a slice
 ```  
+
+### Encoding a Message with a struct
+```go
+type ProtoStruct struct {
+	Id             int     `protoField:"1"`
+	Username       string  `protoField:"2"`
+	Email          string  `protoField:"3"`
+	TestFloat      float32 `protoField:"4"`
+	IsAdmin        bool    `protoField:"5"`
+	TestOtherFloat float64 `protoField:"6"`
+}
+
+data := &ProtoStruct{
+	Id:             4588743,
+	Username:       "hello",
+	Email:          "admin@example.com",
+	TestFloat:      1.2,
+	TestOtherFloat: 1.23456789,
+	IsAdmin:        true,
+}
+
+encoded := EncodeStruct(data)
+fmt.Println(hex.EncodeToString(encoded)) // Output: Protobuf-encoded hex string
+```
+
+### Decoding a Message with a struct
+```go
+type ProtoStruct struct {
+    Id             int     `protoField:"1"`
+    Username       string  `protoField:"2"`
+    Email          string  `protoField:"3"`
+    TestFloat      float32 `protoField:"4"`
+    IsAdmin        bool    `protoField:"5"`
+    TestOtherFloat float64 `protoField:"6"`
+}
+
+data, _ := hex.DecodeString("08c7899802120568656c6c6f1a1161646d696e406578616d706c652e636f6d259a99993f2801311bde8342cac0f33f")
+
+var s ProtoStruct
+decoded := DecodeStruct(decoded.Parts, &s) // DecodeToProtoStruct will panic if the struct is not valid
+
+fmt.Printf("%+v\n", s)
+```
 
 ---
 
