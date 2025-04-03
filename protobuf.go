@@ -107,12 +107,126 @@ func stringOrBytes(data []byte) interface{} {
 }
 
 // Target should be a pointer to a struct
-func DecodeToProtoStruct(data []byte, target interface{}) error {
-	// TODO: too tired for this right now
+func DecodeToProtoStruct(data []ProtoPart, target interface{}) error {
+	getPartByFieldNum := func(fieldNum int) *ProtoPart {
+		for _, part := range data {
+			if part.Field == fieldNum {
+				return &part
+			}
+		}
+		return nil
+	}
+
+	dType := reflect.TypeOf(target).Elem()
+	dValue := reflect.ValueOf(target).Elem()
+
+	if dType.Kind() != reflect.Struct {
+		return errors.New("target must be a pointer to a struct")
+	}
+
+	for i := 0; i < dType.NumField(); i++ {
+		field := dType.Field(i)
+		tag := field.Tag.Get("protoField")
+		if tag == "" {
+			continue
+		}
+
+		fieldNum, err := strconv.Atoi(tag)
+		if err != nil {
+			continue
+		}
+
+		part := getPartByFieldNum(fieldNum)
+		if part == nil {
+			continue
+		}
+
+		fieldValue := dValue.Field(i)
+		if !fieldValue.CanSet() {
+			continue
+		}
+
+		switch field.Type.Kind() {
+		case reflect.Int, reflect.Int32, reflect.Int64:
+			if part.Type == VARINT || part.Type == FIXED64 {
+				var intVal int64
+				switch v := part.Value.(type) {
+				case *big.Int:
+					intVal = v.Int64()
+				case int:
+					intVal = int64(v)
+				case int64:
+					intVal = v
+				case []byte:
+					decoded, _, err := decodeVarint(bytes.NewBuffer(v))
+					if err != nil {
+						return err
+					}
+					intVal = decoded.Int64()
+				default:
+					continue
+				}
+				fieldValue.SetInt(intVal)
+			}
+		case reflect.String:
+			if part.Type == LENDELIM {
+				if v, ok := part.Value.([]byte); ok {
+					fieldValue.SetString(string(v))
+				}
+			}
+		case reflect.Bool:
+			if part.Type == VARINT {
+				var boolVal bool
+				switch v := part.Value.(type) {
+				case int:
+					boolVal = v != 0
+				case int64:
+					boolVal = v != 0
+				case *big.Int:
+					boolVal = v.Sign() != 0
+				case []byte:
+					decoded, _, err := decodeVarint(bytes.NewBuffer(v))
+					if err != nil {
+						return err
+					}
+					boolVal = decoded.Sign() != 0
+				default:
+					boolVal = false
+				}
+				fieldValue.SetBool(boolVal)
+			}
+		case reflect.Slice:
+			if part.Type == LENDELIM {
+				switch v := part.Value.(type) {
+				case []ProtoPart:
+					decoded := ProtoPartsToArray(v)
+					fieldValue.Set(reflect.ValueOf(decoded))
+				case []byte:
+					fieldValue.SetBytes(v)
+				}
+			}
+		case reflect.Float32:
+			if part.Type == FIXED32 {
+				if v, ok := part.Value.([]byte); ok && len(v) == 4 {
+					bits := binary.LittleEndian.Uint32(v)
+					fieldValue.SetFloat(float64(math.Float32frombits(bits)))
+				}
+			}
+		case reflect.Float64:
+			if part.Type == FIXED64 {
+				if v, ok := part.Value.([]byte); ok && len(v) == 8 {
+					bits := binary.LittleEndian.Uint64(v)
+					fieldValue.SetFloat(math.Float64frombits(bits))
+				}
+			}
+		default:
+			return errors.New("unsupported field type")
+		}
+	}
+
 	return nil
 }
 
-// TODO: refactor this
 func EncodeProtoStruct(data interface{}) []ProtoPart {
 	var response []ProtoPart
 	dType := reflect.TypeOf(data)
@@ -158,6 +272,22 @@ func EncodeProtoStruct(data interface{}) []ProtoPart {
 				part.Value = 0
 			}
 			break
+		case float32:
+			part.Type = FIXED32
+
+			floatBytes := make([]byte, 4)
+			binary.LittleEndian.PutUint32(floatBytes, math.Float32bits(value.(float32)))
+
+			part.Value = floatBytes
+			break
+		case float64:
+			part.Type = FIXED64
+
+			floatBytes := make([]byte, 8)
+			binary.LittleEndian.PutUint64(floatBytes, math.Float64bits(value.(float64)))
+
+			part.Value = floatBytes
+			break
 		case []byte:
 			part.Type = LENDELIM
 			part.Value = value
@@ -165,14 +295,6 @@ func EncodeProtoStruct(data interface{}) []ProtoPart {
 		case []interface{}:
 			part.Type = LENDELIM
 			part.Value = ArrayToProtoParts(value.([]interface{}))
-			break
-		case float32:
-			part.Type = FIXED32
-			part.Value = value
-			break
-		case float64:
-			part.Type = FIXED64
-			part.Value = value
 			break
 		}
 
@@ -405,6 +527,28 @@ func DecodeProto(data []byte) ProtoDecoded {
 	response.LeftOver = buffer.Bytes()
 
 	return response
+}
+
+// A simple wrapper to encode data, it doesn't check for errors/field numbers or anything else so it is unadvised to use it, just accomodate yourself to the functions it uses
+func Encode(data []interface{}) []byte {
+	parts := ArrayToProtoParts(data)
+	return EncodeProto(parts)
+}
+
+// A simple wrapper to decode data, it doesn't check for errors/field numbers or even leftover bytes if there are any, it is unadvised to use it, just accomodate yourself to the functions it uses
+func Decode(data []byte) []interface{} {
+	decoded := DecodeProto(data)
+	return ProtoPartsToArray(decoded.Parts)
+}
+
+func EncodeStruct(data interface{}) []byte {
+	parts := EncodeProtoStruct(data)
+	return EncodeProto(parts)
+}
+
+func DecodeStruct(data []byte, target interface{}) error {
+	decoded := DecodeProto(data)
+	return DecodeToProtoStruct(decoded.Parts, target)
 }
 
 //#endregion
