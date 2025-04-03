@@ -552,24 +552,3 @@ func DecodeStruct(data []byte, target interface{}) error {
 }
 
 //#endregion
-//#region Testing
-// func main() {
-// 	str := "082a108082a6efc79e8491111dc3f54840216957148b0abf05402801321048656c6c6f2c2050726f746f627566213a0e50726f746f627566206279746573420501020304054a110a0d4e657374656420737472696e67106350005a080a046b65793110645a090a046b65793210c801"
-// 	data, _ := hex.DecodeString(str)
-
-// 	decoded := DecodeProto(data)
-// 	ProtoPartsToArray(decoded.Parts)
-// 	// fmt.Println(array)
-
-// 	testBool := false
-
-// 	parts := ArrayToProtoParts([]interface{}{
-// 		42, 1234567890123456768, 123.456, 46.13303445314885481, 1, "Hello, Protobuf!", []byte("Protobuf bytes"), []interface{}{1, 2, 3, 4, 5}, []interface{}{
-// 			"Nested string", 99}, testBool, []interface{}{"key1", 100}, []interface{}{"key2", 200}})
-// 	// fmt.Println("Parts: %v, %v", parts, len(parts))
-
-// 	EncodeProto(parts)
-// 	// fmt.Println(hex.EncodeToString(encoded))
-
-// }
-//#endregion
