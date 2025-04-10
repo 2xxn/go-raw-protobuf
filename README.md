@@ -96,7 +96,7 @@ type ProtoStruct struct {
 data, _ := hex.DecodeString("08c7899802120568656c6c6f1a1161646d696e406578616d706c652e636f6d259a99993f2801311bde8342cac0f33f")
 
 var s ProtoStruct
-decoded := DecodeStruct(decoded.Parts, &s) // DecodeToProtoStruct will panic if the struct is not valid
+decoded := DecodeStruct(data, &s) // DecodeToProtoStruct will panic if the struct is not valid
 
 fmt.Printf("%+v\n", s)
 ```
