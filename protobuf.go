@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"math"
 	"math/big"
 	"reflect"
@@ -59,6 +60,7 @@ func DecodeToProtoStruct(data []ProtoPart, target interface{}) error {
 			continue
 		}
 
+		fmt.Println("Field:", field.Name, "Field type ", field.Type.Kind(), "FieldNum:", fieldNum, "Part:", part)
 		switch field.Type.Kind() {
 		case reflect.Int, reflect.Int32, reflect.Int64:
 			if part.Type == VARINT || part.Type == FIXED64 {
@@ -131,6 +133,29 @@ func DecodeToProtoStruct(data []ProtoPart, target interface{}) error {
 					bits := binary.LittleEndian.Uint64(v)
 					fieldValue.SetFloat(math.Float64frombits(bits))
 				}
+			}
+		case reflect.Struct:
+			if part.Type == LENDELIM {
+				decoded := DecodeProto(part.Value.([]byte))
+				ptrToField := fieldValue.Addr().Interface()
+
+				err := DecodeToProtoStruct(decoded.Parts, ptrToField)
+				if err != nil {
+					return err
+				}
+			}
+		case reflect.Ptr:
+			if part.Type == LENDELIM {
+				structType := field.Type.Elem()
+				newStruct := reflect.New(structType) // *StructType
+
+				decoded := DecodeProto(part.Value.([]byte))
+				err := DecodeToProtoStruct(decoded.Parts, newStruct.Interface())
+				if err != nil {
+					return err
+				}
+
+				fieldValue.Set(newStruct)
 			}
 		default:
 			return errors.New("unsupported field type")
@@ -209,6 +234,14 @@ func EncodeProtoStruct(data interface{}) []ProtoPart {
 			part.Type = LENDELIM
 			part.Value = ArrayToProtoParts(value.([]interface{}))
 			break
+		default:
+			// If struct / pointer to struct, encode it as a nested message
+			if field.Type.Kind() == reflect.Struct || field.Type.Kind() == reflect.Ptr {
+				part.Type = LENDELIM
+				part.Value = EncodeProtoStruct(value)
+			} else {
+				continue // Ignore unsupported types
+			}
 		}
 
 		response = append(response, part)
