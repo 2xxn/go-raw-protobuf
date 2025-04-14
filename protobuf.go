@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"math"
 	"math/big"
 	"reflect"
@@ -60,7 +59,7 @@ func DecodeToProtoStruct(data []ProtoPart, target interface{}) error {
 			continue
 		}
 
-		fmt.Println("Field:", field.Name, "Field type ", field.Type.Kind(), "FieldNum:", fieldNum, "Part:", part)
+		// fmt.Println("Field:", field.Name, "Field type ", field.Type.Kind(), "FieldNum:", fieldNum, "Part:", part)
 		switch field.Type.Kind() {
 		case reflect.Int, reflect.Int32, reflect.Int64:
 			if part.Type == VARINT || part.Type == FIXED64 {
