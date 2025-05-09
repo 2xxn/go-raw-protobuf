@@ -20,6 +20,9 @@ type ProtoStruct struct {
 	IsAdmin        bool           `protoField:"5"`
 	TestOtherFloat float64        `protoField:"6"`
 	NestedStruct   *NestedMessage `protoField:"7"`
+	Uint64         uint64         `protoField:"8"`
+	Int64          int64          `protoField:"9"`
+	TestBytes      []byte         `protoField:"10"`
 }
 
 func TestEncodeProtoStruct(t *testing.T) {
@@ -35,6 +38,9 @@ func TestEncodeProtoStruct(t *testing.T) {
 			Id:   1,
 			Name: "hello",
 		},
+		Uint64:    1234567890123456789,
+		Int64:     -1234567890123456789,
+		TestBytes: []byte("hello"),
 	}
 
 	parts := EncodeProtoStruct(data)
@@ -45,7 +51,7 @@ func TestEncodeProtoStruct(t *testing.T) {
 
 func TestDecodeProtoStruct(t *testing.T) {
 	// Test decoding
-	str := "08c7899802120568656c6c6f1a1161646d696e406578616d706c652e636f6d259a99993f2801311bde8342cac0f33f3a090801120568656c6c6f"
+	str := "08c7899802120568656c6c6f1a1161646d696e406578616d706c652e636f6d259a99993f2801311bde8342cac0f33f3a090801120568656c6c6f409582a6efc79e84911148ebfdd990b8e1fbeeee01520568656c6c6f"
 	data, _ := hex.DecodeString(str)
 
 	var s ProtoStruct

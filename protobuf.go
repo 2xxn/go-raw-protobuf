@@ -67,8 +67,8 @@ func DecodeToProtoStruct(data []ProtoPart, target interface{}) error {
 				switch v := part.Value.(type) {
 				case *big.Int:
 					intVal = v.Int64()
-				case int:
-					intVal = int64(v)
+				case int, int32, uint32, int16, uint16, int8, uint8:
+					intVal = int64(v.(int))
 				case int64:
 					intVal = v
 				case []byte:
@@ -82,6 +82,27 @@ func DecodeToProtoStruct(data []ProtoPart, target interface{}) error {
 				}
 				fieldValue.SetInt(intVal)
 			}
+		case reflect.Uint, reflect.Uint32, reflect.Uint64:
+			if part.Type == VARINT || part.Type == FIXED64 {
+				var uintVal uint64
+				switch v := part.Value.(type) {
+				case *big.Int:
+					uintVal = v.Uint64()
+				case int, int32, uint32, int16, uint16, int8, uint8:
+					uintVal = uint64(v.(int))
+				case int64:
+					uintVal = uint64(v)
+				case []byte:
+					decoded, _, err := decodeVarint(bytes.NewBuffer(v))
+					if err != nil {
+						return err
+					}
+					uintVal = decoded.Uint64()
+				default:
+					continue
+				}
+				fieldValue.SetUint(uintVal)
+			}
 		case reflect.String:
 			if part.Type == LENDELIM {
 				if v, ok := part.Value.([]byte); ok {
@@ -92,9 +113,7 @@ func DecodeToProtoStruct(data []ProtoPart, target interface{}) error {
 			if part.Type == VARINT {
 				var boolVal bool
 				switch v := part.Value.(type) {
-				case int:
-					boolVal = v != 0
-				case int64:
+				case int, int64, uint64, int32, uint32, int16, uint16, int8, uint8:
 					boolVal = v != 0
 				case *big.Int:
 					boolVal = v.Sign() != 0
@@ -193,7 +212,7 @@ func EncodeProtoStruct(data interface{}) []ProtoPart {
 		part.Field = fieldNum
 
 		switch value.(type) {
-		case int:
+		case int, int64, uint64, int32, uint32, int16, uint16, int8, uint8, *big.Int:
 			part.Type = VARINT
 			part.Value = value
 			break
@@ -359,7 +378,7 @@ func EncodeProto(parts []ProtoPart) []byte {
 		switch part.Type {
 		case VARINT:
 			switch part.Value.(type) {
-			case int:
+			case int, int32, uint32, uint16, int16, uint8, int8:
 				if part.Value == 0 {
 					buffer.WriteByte(0) // Write 0 if the value is 0, didn't work previously for some reason
 				}
@@ -368,6 +387,9 @@ func EncodeProto(parts []ProtoPart) []byte {
 				break
 			case int64:
 				buffer.Write(encodeVarint(uint64(part.Value.(int64))))
+				break
+			case uint64:
+				buffer.Write(encodeVarint(part.Value.(uint64)))
 				break
 			case *big.Int:
 				buffer.Write(encodeVarint(part.Value.(*big.Int).Uint64()))
