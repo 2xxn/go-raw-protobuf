@@ -217,6 +217,9 @@ func EncodeProtoStruct(data interface{}) []ProtoPart {
 			part.Value = value
 			break
 		case string:
+			if len(value.(string)) == 0 {
+				continue
+			} // Ignore empty strings
 			part.Type = LENDELIM
 			part.Value = []byte(value.(string))
 			break
@@ -371,9 +374,7 @@ func EncodeProto(parts []ProtoPart) []byte {
 
 	for _, part := range parts {
 		// Write the type with index to the buffer
-		buffer.WriteByte(byte(part.Field<<3 | part.Type))
-
-		// buffer.WriteByte(byte(part.Type))
+		buffer.Write(encodeVarint(uint64(part.Field<<3 | part.Type)))
 
 		switch part.Type {
 		case VARINT:
