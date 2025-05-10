@@ -13,16 +13,18 @@ type NestedMessage struct {
 }
 
 type ProtoStruct struct {
-	Id             int            `protoField:"1"`
-	Username       string         `protoField:"2"`
-	Email          string         `protoField:"3"`
-	TestFloat      float32        `protoField:"4"`
-	IsAdmin        bool           `protoField:"5"`
-	TestOtherFloat float64        `protoField:"6"`
-	NestedStruct   *NestedMessage `protoField:"7"`
-	Uint64         uint64         `protoField:"8"`
-	Int64          int64          `protoField:"9"`
-	TestBytes      []byte         `protoField:"10"`
+	Id              int            `protoField:"1"`
+	Username        string         `protoField:"2"`
+	Email           string         `protoField:"3"`
+	TestFloat       float32        `protoField:"4"`
+	IsAdmin         bool           `protoField:"5"`
+	TestOtherFloat  float64        `protoField:"6"`
+	NestedStruct    *NestedMessage `protoField:"7"`
+	Uint64          uint64         `protoField:"8"`
+	Int64           int64          `protoField:"9"`
+	TestBytes       []byte         `protoField:"10"`
+	TestArray       []int          `protoField:"11"`
+	TestStringArray []string       `protoField:"12"`
 }
 
 func TestEncodeProtoStruct(t *testing.T) {
@@ -38,9 +40,11 @@ func TestEncodeProtoStruct(t *testing.T) {
 			Id:   1,
 			Name: "hello",
 		},
-		Uint64:    1234567890123456789,
-		Int64:     -1234567890123456789,
-		TestBytes: []byte("hello"),
+		Uint64:          1234567890123456789,
+		Int64:           -1234567890123456789,
+		TestBytes:       []byte("hello"),
+		TestArray:       []int{1, 2, 3},
+		TestStringArray: []string{"hello", "world"},
 	}
 
 	parts := EncodeProtoStruct(data)
@@ -51,14 +55,14 @@ func TestEncodeProtoStruct(t *testing.T) {
 
 func TestDecodeProtoStruct(t *testing.T) {
 	// Test decoding
-	str := "08c7899802120568656c6c6f1a1161646d696e406578616d706c652e636f6d259a99993f2801311bde8342cac0f33f3a090801120568656c6c6f409582a6efc79e84911148ebfdd990b8e1fbeeee01520568656c6c6f"
+	str := "08c7899802120568656c6c6f1a1161646d696e406578616d706c652e636f6d259a99993f2801311bde8342cac0f33f3a090801120568656c6c6f409582a6efc79e84911148ebfdd990b8e1fbeeee01520568656c6c6f5a06080110021803620e0a0568656c6c6f1205776f726c64"
 	data, _ := hex.DecodeString(str)
 
 	var s ProtoStruct
 	decoded := DecodeProto(data)
 	fmt.Printf("Decoded: %+v\n", decoded.Parts)
 	DecodeToProtoStruct(decoded.Parts, &s) // DecodeToProtoStruct will panic if the struct is not valid
-	t.Logf("Decoded: %v", s)
+	t.Logf("Decoded: %+v", s)
 	t.Logf("Decoded: %+v", *s.NestedStruct)
 }
 
