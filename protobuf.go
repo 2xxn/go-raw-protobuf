@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"math"
 	"math/big"
 	"reflect"
@@ -135,7 +136,30 @@ func DecodeToProtoStruct(data []ProtoPart, target interface{}) error {
 					decoded := ProtoPartsToArray(v)
 					fieldValue.Set(reflect.ValueOf(decoded))
 				case []byte:
-					fieldValue.SetBytes(v)
+					// If the field is a byte slice, set it directly
+					if fieldValue.Type().Elem().Kind() == reflect.Uint8 {
+						fieldValue.SetBytes(v)
+					} else {
+						// Convert []byte to appropriate slice type
+						// TODO: Do some testing to ensure this is always the case.. I'll be doomed if it isn't (so far it is)
+						decoded := DecodeProto(v)
+						newSlice := reflect.MakeSlice(fieldValue.Type(), len(decoded.Parts), len(decoded.Parts))
+						for i, part := range decoded.Parts {
+							switch part.Value.(type) {
+							case *big.Int:
+								part.Value = part.Value.(*big.Int).Int64()
+							}
+							val := reflect.ValueOf(part.Value)
+							if val.Type().ConvertibleTo(fieldValue.Type().Elem()) {
+								val = val.Convert(fieldValue.Type().Elem())
+								newSlice.Index(i).Set(val)
+							} else {
+								panic(fmt.Sprintf("cannot convert %T to %v", part.Value, fieldValue.Type().Elem()))
+							}
+						}
+
+						fieldValue.Set(newSlice)
+					}
 				}
 			}
 		case reflect.Float32:
@@ -251,9 +275,16 @@ func EncodeProtoStruct(data interface{}) []ProtoPart {
 			part.Type = LENDELIM
 			part.Value = value
 			break
-		case []interface{}:
+		case []interface{}, []string, []int, []int64, []uint64, []int32, []uint32, []int16, []uint16, []int8, []bool:
 			part.Type = LENDELIM
-			part.Value = ArrayToProtoParts(value.([]interface{}))
+
+			v := reflect.ValueOf(value)
+			result := make([]interface{}, v.Len())
+			for i := 0; i < v.Len(); i++ {
+				result[i] = v.Index(i).Interface()
+			}
+
+			part.Value = ArrayToProtoParts(result)
 			break
 		default:
 			// If struct / pointer to struct, encode it as a nested message
@@ -305,15 +336,7 @@ func ArrayToProtoParts(data []interface{}) []ProtoPart {
 		part.Field = i + 1
 
 		switch item.(type) {
-		case int:
-			part.Type = VARINT
-			part.Value = item
-			break
-		case *big.Int:
-			part.Type = VARINT
-			part.Value = item
-			break
-		case int64:
+		case int, int64, uint64, uint32, int32, uint16, int16, uint8, int8, *big.Int:
 			part.Type = VARINT
 			part.Value = item
 			break
