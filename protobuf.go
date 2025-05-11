@@ -348,15 +348,7 @@ func ArrayToProtoParts(data []interface{}) []ProtoPart {
 			part.Type = LENDELIM
 			part.Value = item
 			break
-		case []interface{}:
-			part.Type = LENDELIM
-			part.Value = ArrayToProtoParts(item.([]interface{}))
-			break
-		case []int:
-			part.Type = LENDELIM
-			part.Value = ArrayToProtoParts(item.([]interface{}))
-			break
-		case []string:
+		case []int, []interface{}, []string:
 			part.Type = LENDELIM
 			part.Value = ArrayToProtoParts(item.([]interface{}))
 			break
@@ -480,6 +472,7 @@ func DecodeProto(data []byte) ProtoDecoded {
 		fieldType := int(fieldTypeRaw.Int64() & 0x07)
 		part.Field = int(fieldTypeRaw.Int64() >> 3)
 
+		// Check if the field type is valid
 		if fieldType > LENDELIM && fieldType != FIXED32 {
 			break
 		}
@@ -497,10 +490,12 @@ func DecodeProto(data []byte) ProtoDecoded {
 			part.Value = buffer.Next(8)
 			break
 		case LENDELIM:
-			length := buffer.Next(1)[0]
-			data := buffer.Next(int(length))
+			length, _, err := decodeVarint(&buffer)
+			if err != nil {
+				break
+			}
 
-			part.Value = data
+			part.Value = buffer.Next(int(length.Uint64()))
 			break
 		case FIXED32:
 			part.Value = buffer.Next(4)
