@@ -15,9 +15,6 @@ Add the library to your project using `go get`:
 go get github.com/2xxn/go-raw-protobuf
 ```  
 
-<!-- Or simply copy the file into your project.   -->
-<!-- WILL BE UNSUPPORTED AS OF v2.0.0 -->
-
 ---
 
 ## Supported Types  
@@ -34,9 +31,10 @@ Encoding:
 - floating-point numbers (`float32`, `float64`) (encoded as LittleEndian fixed32/fixed64)
 - strings (`string`) (encoded as length-delimited)
 - byte slices (`[]byte`) (encoded as length-delimited)
-- arrays (`[]interface{}`) (encoded as length-delimited, nested message)
+- arrays (`[]interface{}, []int, []string`) (encoded as length-delimited, nested message)
 - nested arrays (`[][]interface{}`) (encoded as length-delimited, nested message)
 
+No support for repeated fields yet
 
 ---
 
@@ -102,7 +100,7 @@ fmt.Printf("%+v\n", s)
 ```
 
 <details>
-<summary>Old-fashioned way</summary>
+<summary>Old-fashioned way, still works</summary>
 <br>
 
 ### Encoding a Message  
